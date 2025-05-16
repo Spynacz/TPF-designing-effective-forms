@@ -20,49 +20,56 @@ function getCountryCode(countryName) {
         .catch(console.error);
 }
 
-let allCountries = [];
+function fetchCountries() {
+    const input = document.getElementById("countrySearch");
+    const dropdown = document.getElementById("countryDropdown");
+    let countryList = [];
 
-function fillCountryList(selectedCountry = null) {
     fetch("https://restcountries.com/v3.1/all")
         .then((res) => res.json())
         .then((data) => {
-            allCountries = data
+            countryList = data
                 .map((c) => c.name.common)
                 .sort((a, b) => a.localeCompare(b));
-
-            if (selectedCountry) {
-                document.getElementById("countrySearch").value = selectedCountry;
-                document.getElementById("selectedCountry").value = selectedCountry;
-            }
-
-            renderDropdown(allCountries);
         });
-}
 
-function renderDropdown(filteredCountries) {
-    const dropdown = document.getElementById("countriesDropdown");
-    dropdown.innerHTML = "";
+    input.addEventListener("focus", () => showDropdown(""));
 
-    if (filteredCountries.length === 0) {
-        dropdown.classList.remove("show");
-        return;
+    input.addEventListener("input", (e) => showDropdown(e.target.value));
+
+    function showDropdown(filter) {
+        dropdown.innerHTML = "";
+        const filtered = countryList.filter((country) =>
+            country.toLowerCase().includes(filter.toLowerCase()),
+        );
+
+        if (filtered.length === 0) {
+            dropdown.classList.remove("show");
+            return;
+        }
+
+        filtered.forEach((country) => {
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = "dropdown-item";
+            item.textContent = country;
+            item.addEventListener("click", () => {
+                input.value = country;
+                dropdown.classList.remove("show");
+            });
+            dropdown.appendChild(item);
+        });
+
+        dropdown.classList.add("show");
     }
 
-    filteredCountries.forEach((name) => {
-        const item = document.createElement("li");
-        item.className = "dropdown-item";
-        item.textContent = name;
-        item.style.cursor = "pointer";
-        item.addEventListener("click", () => {
-            document.getElementById("countrySearch").value = name;
-            document.getElementById("selectedCountry").value = name;
-            dropdown.innerHTML = "";
-            dropdown.classList.remove("show");
-        });
-        dropdown.appendChild(item);
-    });
+    const container = document.getElementById("countryContainer");
 
-    dropdown.classList.add("show");
+    document.addEventListener("click", (e) => {
+        if (!container.contains(e.target)) {
+            dropdown.classList.remove("show");
+        }
+    });
 }
 
 function getCountryByIP() {
@@ -70,11 +77,17 @@ function getCountryByIP() {
         .then((response) => response.json())
         .then((data) => {
             const country = data.country;
-            fillCountryList(country);
+            const input = document.getElementById("countrySearch");
+
+            input.value = country;
+
+            const event = new Event("input");
+            input.dispatchEvent(event);
+
+            getCountryCode(country);
         })
         .catch((error) => {
             console.error("Błąd pobierania danych z serwera GeoJS:", error);
-            fillCountryList();
         });
 }
 
@@ -119,22 +132,8 @@ function handleVat() {
 document.addEventListener("DOMContentLoaded", () => {
     document.addEventListener("click", handleClick);
     getCountryByIP();
+    fetchCountries();
     handleShortcuts();
     setupValidation();
     handleVat();
-
-    document.getElementById("countrySearch").addEventListener("input", (e) => {
-        const query = e.target.value.toLowerCase();
-        const filtered = allCountries.filter((name) =>
-            name.toLowerCase().includes(query),
-        );
-        renderDropdown(filtered);
-    });
-
-    document.addEventListener("click", (e) => {
-        const dropdown = document.getElementById("countriesDropdown");
-        if (!document.getElementById("countrySearch").contains(e.target)) {
-            dropdown.innerHTML = "";
-        }
-    });
 });
